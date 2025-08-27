@@ -1,0 +1,495 @@
+openapi: 3.0.0
+info:
+  title: Blue Collar Workers API
+  description: |
+    RESTful API for blue-collar worker platform providing personalized news feeds,
+    user management, and skill assessment capabilities. Built with Node.js, Express,
+    and Supabase for scalable, cost-effective operations.
+    
+    ## Features
+    - **Paginated News Feeds**: Efficient content delivery with customizable pagination
+    - **User-Specific Content**: Personalized feeds based on user preferences
+    - **Admin Management**: Administrative endpoints for content oversight
+    - **Real-time Ready**: Architecture prepared for real-time features
+    - **Mobile-First**: Optimized for mobile application integration
+    
+    ## Pagination
+    All list endpoints support pagination using query parameters:
+    - `page`: Page number (1-based, default: 1)
+    - `limit`: Items per page (1-100, default: 20)
+    
+    ## Rate Limiting
+    Currently no rate limiting is implemented. Production deployment will include
+    appropriate rate limiting based on user tiers and endpoint sensitivity.
+  version: 1.1.0
+  contact:
+    name: Easha from OK AI team
+    email: support@bluecollarapi.com
+    url: https://github.com/your-org/blue-collar-backend
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-production-url.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: System health and status endpoints
+  - name: Feeds
+    description: News feed management and retrieval
+  - name: Documentation
+    description: API documentation endpoints
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: API Health Check
+      description: |
+        Verifies API server status and provides basic system information.
+        Returns server timestamp and documentation links for quick reference.
+      operationId: getHealthCheck
+      responses:
+        '200':
+          description: API is running successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                success:
+                  summary: Successful health check
+                  value:
+                    message: "Blue Collar Workers API is running!"
+                    timestamp: "2025-08-26T15:30:45.123Z"
+                    documentation: "http://localhost:3000/api-docs"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feeds/{userId}:
+    get:
+      tags:
+        - Feeds
+      summary: Get User-Specific Paginated Feeds
+      description: |
+        Retrieves paginated news feeds for a specific user, ordered by timestamp (newest first).
+        Supports customizable pagination for efficient data loading and improved user experience.
+        
+        ## Usage Examples
+        - Get first page: `/api/feeds/{userId}`
+        - Get specific page: `/api/feeds/{userId}?page=3&limit=15`
+        - Large page size: `/api/feeds/{userId}?limit=50`
+      operationId: getUserFeeds
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: UUID of the user to fetch feeds for
+          schema:
+            type: string
+            format: uuid
+            example: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based indexing)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 2
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page (maximum 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 15
+      responses:
+        '200':
+          description: User feeds retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserFeedsResponse'
+              examples:
+                first_page:
+                  summary: First page of user feeds
+                  value:
+                    success: true
+                    userId: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+                    feeds:
+                      - feedId: "b42558e8-6c12-4eb2-9ee1-172cee858ca1"
+                        userId: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+                        source: "JobBoard"
+                        title: "Construction Worker Needed"
+                        url: "https://example.com/job/123"
+                        imageFirebaseUrl: "https://firebase.com/image.jpg"
+                        timestamp: "2025-08-26T15:30:45.123Z"
+                        content: "Latest job opportunity in construction sector"
+                        category: "Jobs"
+                    pagination:
+                      currentPage: 1
+                      totalPages: 5
+                      totalCount: 87
+                      hasNextPage: true
+                      hasPreviousPage: false
+                      limit: 20
+                middle_page:
+                  summary: Middle page with navigation
+                  value:
+                    success: true
+                    userId: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+                    feeds:
+                      - feedId: "c53669f9-7d23-5fc3-a827-557766551ba2"
+                        userId: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+                        source: "TrainingCenter"
+                        title: "New Safety Course Available"
+                        url: "https://training.example.com/safety"
+                        imageFirebaseUrl: null
+                        timestamp: "2025-08-25T10:15:30.456Z"
+                        content: "Enhance your skills with our latest safety training"
+                        category: "Training"
+                    pagination:
+                      currentPage: 3
+                      totalPages: 5
+                      totalCount: 87
+                      hasNextPage: true
+                      hasPreviousPage: true
+                      limit: 20
+                empty_result:
+                  summary: No feeds for user
+                  value:
+                    success: true
+                    userId: "00000000-0000-0000-0000-000000000000"
+                    feeds: []
+                    pagination:
+                      currentPage: 1
+                      totalPages: 0
+                      totalCount: 0
+                      hasNextPage: false
+                      hasPreviousPage: false
+                      limit: 20
+        '400':
+          description: Bad Request - Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_pagination:
+                  summary: Invalid pagination parameters
+                  value:
+                    success: false
+                    error: "Invalid pagination parameters"
+                    message: "Limit must be between 1 and 100"
+                    details: "Please check your page and limit parameters"
+                invalid_page:
+                  summary: Invalid page number
+                  value:
+                    success: false
+                    error: "Invalid pagination parameters"
+                    message: "Page must be greater than or equal to 1"
+                    details: "Please check your page and limit parameters"
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feeds:
+    get:
+      tags:
+        - Feeds
+      summary: Get All Paginated Feeds (Admin)
+      description: |
+        Retrieves paginated feeds from all users, ordered by timestamp (newest first).
+        This endpoint is intended for administrative purposes and should be restricted
+        in production environments.
+        
+        ## Security Note
+        In production, this endpoint should require admin authentication and proper
+        authorization checks to prevent unauthorized access to all user data.
+      operationId: getAllFeeds
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Page number (1-based indexing)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: limit
+          in: query
+          required: false
+          description: Number of items per page (maximum 100)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 50
+      responses:
+        '200':
+          description: All feeds retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminFeedsResponse'
+              examples:
+                admin_feeds:
+                  summary: Admin view of all feeds
+                  value:
+                    success: true
+                    feeds:
+                      - feedId: "b42558e8-6c12-4eb2-9ee1-172cee858ca1"
+                        userId: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+                        source: "JobBoard"
+                        title: "Construction Worker Needed"
+                        url: "https://example.com/job/123"
+                        imageFirebaseUrl: "https://firebase.com/image.jpg"
+                        timestamp: "2025-08-26T15:30:45.123Z"
+                        content: "Latest job opportunity in construction"
+                        category: "Jobs"
+                      - feedId: "c53669f9-7d23-5fc3-a827-557766551ba2"
+                        userId: "550e8400-e29b-41d4-a716-446655440000"
+                        source: "NewsOutlet"
+                        title: "Industry Update"
+                        url: "https://news.example.com/update"
+                        imageFirebaseUrl: null
+                        timestamp: "2025-08-26T14:20:30.789Z"
+                        content: "Latest updates from the construction industry"
+                        category: "News"
+                    pagination:
+                      currentPage: 1
+                      totalPages: 8
+                      totalCount: 387
+                      hasNextPage: true
+                      hasPreviousPage: false
+                      limit: 50
+                    message: "All feeds retrieved successfully"
+        '400':
+          description: Bad Request - Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Feed:
+      type: object
+      description: News feed item containing content and metadata
+      required:
+        - feedId
+        - userId
+        - content
+        - timestamp
+      properties:
+        feedId:
+          type: string
+          format: uuid
+          description: Unique identifier for the feed item
+          example: "b42558e8-6c12-4eb2-9ee1-172cee858ca1"
+        userId:
+          type: string
+          format: uuid
+          description: UUID of the user this feed belongs to
+          example: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+        source:
+          type: string
+          nullable: true
+          description: Source of the feed content (e.g., JobBoard, NewsOutlet)
+          example: "JobBoard"
+        title:
+          type: string
+          nullable: true
+          description: Title or headline of the feed item
+          example: "Construction Worker Needed"
+        url:
+          type: string
+          format: uri
+          nullable: true
+          description: External URL for more information
+          example: "https://example.com/job/123"
+        imageFirebaseUrl:
+          type: string
+          format: uri
+          nullable: true
+          description: Firebase URL for associated image
+          example: "https://firebase.com/image.jpg"
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the feed was created
+          example: "2025-08-26T15:30:45.123Z"
+        content:
+          type: string
+          description: Main content of the feed item
+          example: "Latest job opportunity in construction sector"
+        category:
+          type: string
+          nullable: true
+          description: Content category for filtering and organization
+          example: "Jobs"
+
+    PaginationMeta:
+      type: object
+      description: Pagination metadata for list responses
+      required:
+        - currentPage
+        - totalPages
+        - totalCount
+        - hasNextPage
+        - hasPreviousPage
+        - limit
+      properties:
+        currentPage:
+          type: integer
+          minimum: 1
+          description: Current page number (1-based)
+          example: 2
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Total number of pages available
+          example: 5
+        totalCount:
+          type: integer
+          minimum: 0
+          description: Total number of items across all pages
+          example: 87
+        hasNextPage:
+          type: boolean
+          description: Whether there are more pages after the current one
+          example: true
+        hasPreviousPage:
+          type: boolean
+          description: Whether there are pages before the current one
+          example: true
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Number of items per page
+          example: 20
+
+    HealthResponse:
+      type: object
+      description: Health check response with server status
+      required:
+        - message
+        - timestamp
+        - documentation
+      properties:
+        message:
+          type: string
+          description: Server status message
+          example: "Blue Collar Workers API is running!"
+        timestamp:
+          type: string
+          format: date-time
+          description: Current server timestamp
+          example: "2025-08-26T15:30:45.123Z"
+        documentation:
+          type: string
+          format: uri
+          description: URL to interactive API documentation
+          example: "http://localhost:3000/api-docs"
+
+    UserFeedsResponse:
+      type: object
+      description: Response containing user-specific feeds with pagination
+      required:
+        - success
+        - userId
+        - feeds
+        - pagination
+      properties:
+        success:
+          type: boolean
+          description: Operation success indicator
+          example: true
+        userId:
+          type: string
+          format: uuid
+          description: UUID of the user whose feeds were retrieved
+          example: "4ed491e3-2efa-4c0b-a4f0-bd5aafa83bb4"
+        feeds:
+          type: array
+          description: Array of feed items for the user
+          items:
+            $ref: '#/components/schemas/Feed'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    AdminFeedsResponse:
+      type: object
+      description: Response containing all feeds with pagination (admin endpoint)
+      required:
+        - success
+        - feeds
+        - pagination
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Operation success indicator
+          example: true
+        feeds:
+          type: array
+          description: Array of all feed items from all users
+          items:
+            $ref: '#/components/schemas/Feed'
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+        message:
+          type: string
+          description: Informational message about the operation
+          example: "All feeds retrieved successfully"
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format
+      required:
+        - success
+        - error
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Operation success indicator (always false for errors)
+          example: false
+        error:
+          type: string
+          description: High-level error category
+          example: "Invalid pagination parameters"
+        message:
+          type: string
+          description: User-friendly error message
+          example: "Page must be greater than or equal to 1"
+        details:
+          type: string
+          description: Additional technical details for debugging
+          example: "Please check your page and limit parameters" 
