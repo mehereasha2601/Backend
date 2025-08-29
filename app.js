@@ -692,6 +692,15 @@ app.post('/api/internal/feeds', authenticateInternalAPI, async (req, res) => {
 });
 
 /**
+ * API Routes Configuration
+ * @description Import and mount API route modules
+ */
+const profileRoutes = require('./routes/profiles');
+
+// Mount API routes
+app.use('/api', profileRoutes);
+
+/**
  * Export the Express application for use in server.js and tests
  * @module app
  */
